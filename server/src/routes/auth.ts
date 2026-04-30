@@ -11,7 +11,7 @@ const router = Router();
 const registerSchema = z.object({
   studentId: z.string().min(1).max(20),
   name: z.string().min(1).max(20),
-  password: z.string().min(4).max(50),
+  password: z.string().min(8).max(50),
 });
 
 // 로그인 입력값 검증 스키마
