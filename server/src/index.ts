@@ -27,6 +27,7 @@ const allowedOrigins = (process.env.CLIENT_URL || 'http://localhost:3000')
 function isAllowedOrigin(origin: string | undefined): boolean {
   if (!origin) return true;
   if (allowedOrigins.includes(origin)) return true;
+  if (origin.endsWith('.vercel.app')) return true;
   if (/^http:\/\/localhost:\d+$/.test(origin)) return true;
   return false;
 }
