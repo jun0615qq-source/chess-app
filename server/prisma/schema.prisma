@@ -1,0 +1,167 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id             Int      @id @default(autoincrement())
+  studentId      String   @unique
+  name           String
+  password       String
+  role           String   @default("student")
+  rating         Int      @default(1200)
+  teamRating     Int      @default(1200)
+  puzzlePoints   Int      @default(0)
+  puzzleStreak   Int      @default(0)
+  lastPuzzleDate DateTime?
+  createdAt      DateTime @default(now())
+
+  gamesAsWhite    Game[]                @relation("WhitePlayer")
+  gamesAsBlack    Game[]                @relation("BlackPlayer")
+  ratingHistory   RatingHistory[]
+  badges          Badge[]
+  puzzleResults   PuzzleResult[]
+  teamMembers     TeamMember[]
+  refreshTokens   RefreshToken[]
+}
+
+model RefreshToken {
+  id        Int      @id @default(autoincrement())
+  token     String   @unique
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+model Game {
+  id           Int      @id @default(autoincrement())
+  whiteId      Int
+  blackId      Int
+  white        User     @relation("WhitePlayer", fields: [whiteId], references: [id])
+  black        User     @relation("BlackPlayer", fields: [blackId], references: [id])
+  pgn          String   @default("")
+  result       String?  // "white" | "black" | "draw" | null(진행중)
+  reason       String?
+  timeControl  String
+  gameMode     String   @default("standard")
+  tournamentId Int?
+  tournament   Tournament? @relation(fields: [tournamentId], references: [id])
+  leagueId     Int?
+  league       League?     @relation(fields: [leagueId], references: [id])
+  createdAt    DateTime @default(now())
+
+  ratingChanges RatingHistory[]
+}
+
+model RatingHistory {
+  id         Int      @id @default(autoincrement())
+  userId     Int
+  user       User     @relation(fields: [userId], references: [id])
+  gameId     Int
+  game       Game     @relation(fields: [gameId], references: [id])
+  before     Int
+  after      Int
+  change     Int
+  gap        Int
+  multiplier Float
+  createdAt  DateTime @default(now())
+}
+
+model Puzzle {
+  id         Int      @id @default(autoincrement())
+  date       DateTime @unique
+  fen        String
+  solution   String   // JSON 배열 문자열 ["Qxf7+", "Kd8", "Qe8#"]
+  difficulty String   // "easy" | "medium" | "hard"
+  theme      String
+  results    PuzzleResult[]
+  createdAt  DateTime @default(now())
+}
+
+model PuzzleResult {
+  id           Int      @id @default(autoincrement())
+  userId       Int
+  user         User     @relation(fields: [userId], references: [id])
+  puzzleId     Int
+  puzzle       Puzzle   @relation(fields: [puzzleId], references: [id])
+  solved       Boolean
+  attempts     Int      @default(0)
+  pointsEarned Int      @default(0)
+  createdAt    DateTime @default(now())
+
+  @@unique([userId, puzzleId])
+}
+
+model Tournament {
+  id           Int      @id @default(autoincrement())
+  name         String
+  hostId       Int
+  format       String   // "single_elim" | "double_elim"
+  timeControl  String
+  status       String   @default("waiting") // "waiting" | "ongoing" | "finished"
+  games        Game[]
+  participants TournamentParticipant[]
+  createdAt    DateTime @default(now())
+}
+
+model TournamentParticipant {
+  id           Int        @id @default(autoincrement())
+  tournamentId Int
+  tournament   Tournament @relation(fields: [tournamentId], references: [id])
+  userId       Int
+  seed         Int?
+  eliminated   Boolean    @default(false)
+}
+
+model League {
+  id           Int      @id @default(autoincrement())
+  name         String
+  hostId       Int
+  timeControl  String
+  status       String   @default("waiting") // "waiting" | "ongoing" | "finished"
+  games        Game[]
+  participants LeagueParticipant[]
+  createdAt    DateTime @default(now())
+}
+
+model LeagueParticipant {
+  id       Int    @id @default(autoincrement())
+  leagueId Int
+  league   League @relation(fields: [leagueId], references: [id])
+  userId   Int
+  wins     Int    @default(0)
+  draws    Int    @default(0)
+  losses   Int    @default(0)
+  points   Int    @default(0)
+}
+
+model Team {
+  id        Int          @id @default(autoincrement())
+  name      String
+  rating    Int          @default(1200)
+  members   TeamMember[]
+  createdAt DateTime     @default(now())
+}
+
+model TeamMember {
+  id     Int    @id @default(autoincrement())
+  teamId Int
+  team   Team   @relation(fields: [teamId], references: [id])
+  userId Int
+  user   User   @relation(fields: [userId], references: [id])
+  role   String @default("member")
+}
+
+model Badge {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id])
+  type      String   // "tournament_win" | "league_win"
+  sourceId  Int
+  createdAt DateTime @default(now())
+}

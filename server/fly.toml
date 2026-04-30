@@ -1,0 +1,22 @@
+# fly.toml — Fly.io 배포 설정
+# 앱 이름은 flyctl apps create <이름> 으로 생성한 이름과 일치해야 합니다.
+app = 'chess-app-server'
+primary_region = 'nrt'
+
+[build]
+
+[env]
+  PORT = '4000'
+  NODE_ENV = 'production'
+
+[http_service]
+  internal_port = 4000
+  force_https = true
+  auto_stop_machines = 'stop'
+  auto_start_machines = true
+  # 1로 설정 → WebSocket 연결이 끊기지 않도록 항상 1개 머신 유지 (무료 티어 내)
+  min_machines_running = 1
+
+[[vm]]
+  size = 'shared-cpu-1x'
+  memory = '256mb'

@@ -1,0 +1,55 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: chess_db
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-chess_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-chess_pass}
+      POSTGRES_DB: ${POSTGRES_DB:-chess_db}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-chess_user}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: chess_server
+    ports:
+      - "4000:4000"
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-chess_user}:${POSTGRES_PASSWORD:-chess_pass}@db:5432/${POSTGRES_DB:-chess_db}
+      JWT_SECRET: ${JWT_SECRET:-supersecretkey_change_in_production}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-refreshsecretkey_change_in_production}
+      PORT: 4000
+      NODE_ENV: ${NODE_ENV:-development}
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./server:/app
+      - /app/node_modules
+
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    container_name: chess_client
+    ports:
+      - "3000:3000"
+    environment:
+      VITE_API_URL: http://localhost:4000
+      VITE_SOCKET_URL: http://localhost:4000
+    depends_on:
+      - server
+
+volumes:
+  postgres_data:
